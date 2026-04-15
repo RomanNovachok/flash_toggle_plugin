@@ -1,0 +1,20 @@
+name: flash_toggle_plugin
+description: Local plugin for toggling the Android flashlight.
+version: 0.0.1
+homepage: https://github.com/romansss/flash_toggle_plugin
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.flash_toggle_plugin
+        pluginClass: FlashTogglePlugin

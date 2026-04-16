@@ -18,4 +18,23 @@ class FlashTogglePlugin {
     final isEnabled = await _channel.invokeMethod<bool>('toggleLight');
     return isEnabled ?? false;
   }
+
+  static Future<int> get batteryLevel async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError(
+        'Battery level is supported only on Android in this plugin.',
+      );
+    }
+
+    final level = await _channel.invokeMethod<int>('getBatteryLevel');
+
+    if (level == null || level < 0) {
+      throw PlatformException(
+        code: 'BATTERY_UNAVAILABLE',
+        message: 'Battery level is unavailable.',
+      );
+    }
+
+    return level;
+  }
 }

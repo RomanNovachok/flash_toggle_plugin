@@ -3,7 +3,10 @@ package com.example.flash_toggle_plugin
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -34,6 +37,7 @@ class FlashTogglePlugin :
     private var activity: Activity? = null
     private var activityBinding: ActivityPluginBinding? = null
     private var pendingPermissionResult: Result? = null
+    private lateinit var applicationContext: Context
 
     private val torchCallback = object : CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
@@ -46,6 +50,7 @@ class FlashTogglePlugin :
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "flash_toggle_plugin/methods")
         channel.setMethodCallHandler(this)
+        applicationContext = binding.applicationContext
 
         cameraManager =
             binding.applicationContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -56,6 +61,7 @@ class FlashTogglePlugin :
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "toggleLight" -> toggleLight(result)
+            "getBatteryLevel" -> getBatteryLevel(result)
             else -> result.notImplemented()
         }
     }
@@ -107,6 +113,33 @@ class FlashTogglePlugin :
         } catch (error: SecurityException) {
             result.error("FLASH_PERMISSION", error.message, null)
         }
+    }
+
+    private fun getBatteryLevel(result: Result) {
+        val batteryManager =
+            applicationContext.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+
+        if (batteryManager != null) {
+            val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            if (level in 0..100) {
+                result.success(level)
+                return
+            }
+        }
+
+        val batteryIntent = applicationContext.registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+        )
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+
+        if (level >= 0 && scale > 0) {
+            result.success((level * 100) / scale)
+            return
+        }
+
+        result.error("BATTERY_UNAVAILABLE", "Battery level is unavailable.", null)
     }
 
     override fun onRequestPermissionsResult(
